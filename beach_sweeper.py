@@ -5,26 +5,32 @@ import random
 # Initialising screen params
 SPACE_SIZE = 32
 WIDTH = 25*32 + 100
-temp_width = WIDTH - 100
 HEIGHT = 25*32
 BACKGROUND = "#CAF2FF"
 FONTSIZE= 14
 
-# power locations
-tsunami_location = (temp_width + SPACE_SIZE*1.5, 0 + SPACE_SIZE*1.5)
-pipeline_location = (temp_width + SPACE_SIZE*1.5, SPACE_SIZE*2 + SPACE_SIZE*1.5)
-
-# variable from level to level
-PCT_MINES = 0.25
-PCT_SURF = 0.45
-
 class Board: 
   
-    def __init__(self): 
+    def __init__(self, pct_surf = 0.45, pct_mines=0.2, width = WIDTH - 100): 
         self.tiles = dict()
+
+        self.pct_surf = pct_surf
+        self.pct_mines = pct_mines
+        self.width = width
+
         self.tsunami_left = 1
         self.pipeline_left = 1
+        self.undo_left = 5
+        self.nazare_left = 1
+
         self.pipeline_active = False
+        self.game_over_text = False
+
+        # power locations
+        self.tsunami_location = (self.width + SPACE_SIZE*1.5, 0 + SPACE_SIZE*1.5)
+        self.pipeline_location = (self.width + SPACE_SIZE*1.5, SPACE_SIZE*2 + SPACE_SIZE*1.5)
+        self.undo_location = (self.width + SPACE_SIZE*1.5, SPACE_SIZE*6 + SPACE_SIZE*1.5)
+        self.nazare_location = (self.width + SPACE_SIZE*1.5, SPACE_SIZE*4 + SPACE_SIZE*1.5)
 
         # TODO: get the resize image working eventually
         # BLANK_TILE = Image.open("New_Piskel/sprite_0.png")
@@ -32,18 +38,32 @@ class Board:
         # BLANK_TILE = ImageTK.PhotoImage(BLANK_TILE)
         
         # place power up tiles
-        square = canvas.create_image( 
-            tsunami_location,
-            image=TSUNAMI_TILE
-        )
+        if self.tsunami_left >0:
+            canvas.create_image( 
+                self.tsunami_location,
+                image=TSUNAMI_TILE
+            )
 
-        square = canvas.create_image( 
-            pipeline_location,
-            image=PIPELINE_TILE
-        )
+        if self.pipeline_left >0:
+            canvas.create_image( 
+                self.pipeline_location,
+                image=PIPELINE_TILE
+            )
+
+        if self.undo_left > 0:
+            canvas.create_image( 
+                self.undo_location,
+                image=UNDO_TILE
+            )
+        
+        if self.nazare_left > 0:
+            canvas.create_image( 
+                self.nazare_location,
+                image=NAZARE_TILE
+            )
 
         # inialize all tiles and randomly place mines
-        for i in range(0, int(temp_width/SPACE_SIZE)): 
+        for i in range(0, int(self.width/SPACE_SIZE)): 
             for j in range(0, int(HEIGHT/SPACE_SIZE)): 
                 
                 square = canvas.create_image( 
@@ -51,7 +71,7 @@ class Board:
                     image=BLANK_TILE)
                 
                 t = Tile(i, j, square)
-                t.ismine = random.random() < PCT_MINES
+                t.ismine = random.random() < self.pct_mines
 
                 self.tiles[(i, j)] = t 
 
@@ -59,7 +79,7 @@ class Board:
         for k, v in self.tiles.items():
             num_mines = sum([int(self.tiles[c].ismine) for c in self.get_adj_coords(*k)])
             if num_mines == 0:
-                if random.random() < PCT_SURF:
+                if random.random() < self.pct_surf:
                     v.surfer = True
             v.value = num_mines
 
@@ -71,7 +91,7 @@ class Board:
         all_cs = (x+1, y), (x+1, y+1), (x+1, y-1), (x,y+1), (x,y-1), (x-1, y+1), (x-1,y), (x-1,y-1)
         ret_cs = []
         for c in all_cs:
-            if c[0] >= 0 and c[0] < temp_width//SPACE_SIZE and c[1] >= 0 and c[1] < HEIGHT//SPACE_SIZE:
+            if c[0] >= 0 and c[0] < self.width//SPACE_SIZE and c[1] >= 0 and c[1] < HEIGHT//SPACE_SIZE:
                 if not self.tiles[c].revealed:
                     ret_cs.append(c)
         return ret_cs
@@ -84,12 +104,11 @@ class Board:
             for _,v in self.tiles.items():
                 if v.value == 0 and not v.ismine:
                     v.reveal()
-
             self.tsunami_left -= 1
 
         if self.tsunami_left <= 0:
             square = canvas.create_image( 
-                tsunami_location,
+                self.tsunami_location,
                 image=USED_TILE
             )
             
@@ -100,7 +119,7 @@ class Board:
         """
         if self.pipeline_left <= 1:
             square = canvas.create_image( 
-                pipeline_location,
+                self.pipeline_location,
                 image=USED_TILE
             )
             
@@ -118,6 +137,41 @@ class Board:
         for c in self.get_adj_coords(i,j) + [(i,j)]:
             if not board.tiles[c].ismine:
                 board.tiles[c].reveal()
+
+    def undo_operation(self):
+        if self.undo_left > 0:
+            if self.game_over_text:
+                canvas.delete(self.game_over_text)
+                self.game_over_text = False
+                self.undo_left -= 1
+            
+            if self.undo_left <= 0:
+                canvas.create_image( 
+                    self.undo_location,
+                    image=USED_TILE
+                )
+
+    def nazare(self):
+        if self.nazare_left > 0:
+
+            w = random.randint(2,self.width//SPACE_SIZE - 2)
+            h = random.randint(2, HEIGHT//SPACE_SIZE - 2)
+
+            for c in self.get_adj_coords(w,h) \
+                + self.get_adj_coords(w+1,h) + self.get_adj_coords(w-1,h) \
+                + self.get_adj_coords(w,h + 1) + self.get_adj_coords(w,h - 1)\
+                + [(w,h)]:
+
+                if not board.tiles[c].ismine:
+                    board.tiles[c].reveal()
+
+            self.nazare_left -= 1
+            
+            if self.undo_left <= 0:
+                canvas.create_image( 
+                    self.undo_location,
+                    image=USED_TILE
+                )
     
     def victory_check(self):
         """
@@ -219,10 +273,14 @@ def clicked(event):
     """
   
     x, y, click  = event.x, event.y, event.num
-    #print(f"CLICK: {(x,y)}")
+    if (x//SPACE_SIZE == board.undo_location[0]//SPACE_SIZE) \
+        and (y//SPACE_SIZE == board.undo_location[1]//SPACE_SIZE):
+        board.undo_operation()
 
-
-    if 0 < x < temp_width and 0<y<HEIGHT:
+    elif board.game_over_text:
+        return
+    
+    elif 0 < x < board.width and 0<y<HEIGHT:
         if board.pipeline_active:
             board.pipeline_action(x,y)
         elif click == 2:
@@ -230,13 +288,14 @@ def clicked(event):
         elif click == 1:
             board.tiles[(x//SPACE_SIZE, y//SPACE_SIZE)].reveal()
             if board.tiles[(x//SPACE_SIZE, y//SPACE_SIZE)].ismine:
-                canvas.create_text(
+                board.game_over_text = canvas.create_text(
                     canvas.winfo_width()/2,  
                     canvas.winfo_height()/2, 
                     font=('consolas', 70),  
                     text="GAME OVER",  
                     fill="red", tag="gameover"
                 ) 
+                #board.kill_tile = (x//SPACE_SIZE, y//SPACE_SIZE)
 
         if board.victory_check():
             canvas.create_text(
@@ -246,10 +305,19 @@ def clicked(event):
                     text="!YOU WIN!",  
                     fill="green", tag="gameover"
                 ) 
-    elif (x//SPACE_SIZE == tsunami_location[0]//SPACE_SIZE) and (y//SPACE_SIZE == tsunami_location[1]//SPACE_SIZE):
+            
+    elif (x//SPACE_SIZE == board.tsunami_location[0]//SPACE_SIZE) \
+        and (y//SPACE_SIZE == board.tsunami_location[1]//SPACE_SIZE):
         board.tsunami()
-    elif (x//SPACE_SIZE == pipeline_location[0]//SPACE_SIZE) and (y//SPACE_SIZE == pipeline_location[1]//SPACE_SIZE):
+
+    elif (x//SPACE_SIZE == board.pipeline_location[0]//SPACE_SIZE) \
+        and (y//SPACE_SIZE == board.pipeline_location[1]//SPACE_SIZE):
         board.pipeline_update()
+    
+    elif (x//SPACE_SIZE == board.nazare_location[0]//SPACE_SIZE) \
+        and (y//SPACE_SIZE == board.nazare_location[1]//SPACE_SIZE):
+        board.nazare()
+
     else:
         pass
 
@@ -273,6 +341,11 @@ canvas = Canvas(window, bg=BACKGROUND,
 canvas.pack() 
   
 window.update() 
+
+label = Label(window,  
+            text="Points:{}".format(score.get()),  
+            font=('consolas', 20)) 
+label.pack()  
   
 window_width = window.winfo_width() 
 window_height = window.winfo_height() 
@@ -293,6 +366,8 @@ TSUNAMI_TILE = PhotoImage(file="New_Piskel/sprite_tsunami.png")
 PIPELINE_TILE = PhotoImage(file="New_Piskel/sprite_pipeline.png")
 USED_TILE = PhotoImage(file="New_Piskel/sprite_used_power.png")
 SURFER_TILE = PhotoImage(file="New_Piskel/sprite_4.png")
+UNDO_TILE = PhotoImage(file="New_Piskel/sprite_undo.png")
+NAZARE_TILE = PhotoImage(file="New_Piskel/sprite_nazare.png")
 
   
 window.bind('<Button>',  clicked) 
