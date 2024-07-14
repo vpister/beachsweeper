@@ -6,7 +6,7 @@ class Tile():
         self.square = square
         self.FONTSIZE = 15
         self.canvas, self.space_size, self.sprites, self.board = env_factors 
-        
+
         self.revealed = False
         self.value = None
         self.ismine = None

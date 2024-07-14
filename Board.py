@@ -1,7 +1,10 @@
 import random
 from Tile import *
 
-class Board: 
+class Board:
+    """
+    Track and display a game board of minesweeper.
+    """ 
   
     def __init__(self, 
                  width, height, 
@@ -188,3 +191,59 @@ class Board:
                 return False
             
         return True
+    
+
+    def clicked(self, event): 
+        """
+        Identify clicked tile and take appropriate action.
+        Handles victory and game over state.
+        """
+    
+        x, y, click  = event.x, event.y, event.num
+        if (x//self.space_size == self.undo_location[0]//self.space_size) \
+            and (y//self.space_size == self.undo_location[1]//self.space_size):
+            self.undo_operation()
+
+        elif self.game_over_text:
+            return
+        
+        elif 0 < x < self.width and 0<y<self.height:
+            if self.pipeline_active:
+                self.pipeline_action(x,y)
+            elif click == 2:
+                self.tiles[(x//self.space_size, y//self.space_size)].flag()
+            elif click == 1:
+                self.tiles[(x//self.space_size, y//self.space_size)].reveal()
+                if self.tiles[(x//self.space_size, y//self.space_size)].ismine:
+                    self.game_over_text = self.canvas.create_text(
+                        self.canvas.winfo_width()/2,  
+                        self.canvas.winfo_height()/2, 
+                        font=('consolas', 70),  
+                        text="GAME OVER",  
+                        fill="red", tag="gameover"
+                    ) 
+                    #board.kill_tile = (x//SPACE_SIZE, y//SPACE_SIZE)
+
+            if self.victory_check():
+                self.canvas.create_text(
+                        self.canvas.winfo_width()/2,  
+                        self.canvas.winfo_height()/2, 
+                        font=('consolas', 70),  
+                        text="!YOU WIN!",  
+                        fill="green", tag="gameover"
+                    ) 
+                
+        elif (x//self.space_size == self.tsunami_location[0]//self.space_size) \
+            and (y//self.space_size == self.tsunami_location[1]//self.space_size):
+            self.tsunami()
+
+        elif (x//self.space_size == self.pipeline_location[0]//self.space_size) \
+            and (y//self.space_size == self.pipeline_location[1]//self.space_size):
+            self.pipeline_update()
+        
+        elif (x//self.space_size == self.nazare_location[0]//self.space_size) \
+            and (y//self.space_size == self.nazare_location[1]//self.space_size):
+            self.nazare()
+
+        else:
+            pass
