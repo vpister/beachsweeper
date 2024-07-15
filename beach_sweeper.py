@@ -30,7 +30,7 @@ def get_sprites():
     return sprites
 
 
-def generate_level(height, width, pct_mines = 0.2, pct_surf = 0.45):
+def generate_level(height, width, pct_mines = 0.2, pct_surf = 0.45, callback = None):
 
     def exit_level(event):
         """
@@ -39,8 +39,12 @@ def generate_level(height, width, pct_mines = 0.2, pct_surf = 0.45):
         # TODO: return to menu
         if board.victory_check():
             window.destroy()
+            if(callback):
+                callback()
         if board.game_over_text:
             window.destroy()
+            if(callback):
+                callback()
 
     # Giving title to the gaming window 
     window = Tk() 
@@ -88,14 +92,14 @@ def generate_level(height, width, pct_mines = 0.2, pct_surf = 0.45):
     window.mainloop()
 
 
-def generate_lvl1():
-    generate_level(10*SPACE_SIZE, 10*SPACE_SIZE+100, pct_mines=0.1)
+def generate_lvl1(callback = None):
+    generate_level(10*SPACE_SIZE, 10*SPACE_SIZE+100, pct_mines=0.1, callback = callback)
 
-def generate_lvl2():
-    generate_level(15*SPACE_SIZE, 15*SPACE_SIZE+100)
+def generate_lvl2(callback = None):
+    generate_level(15*SPACE_SIZE, 15*SPACE_SIZE+100, callback = callback)
 
-generate_lvl1()
-generate_lvl2()
+#generate_lvl1()
+#generate_lvl2()
 
 
 # # Create the main window
